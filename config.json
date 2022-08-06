@@ -1,0 +1,75 @@
+{
+	"Participants":
+	[
+		{
+			"Name": "Sam",
+			"Team Name": "Samtown Sams",
+			"Autodraft": false,
+			"Mode": "hard",
+			"Tank": false
+		},
+		{
+			"Name": "Matt",
+			"Team Name": "Team Matt",
+			"Autodraft": false,
+			"Mode": "hard",
+			"Tank": false
+		},
+		{
+			"Name": "Will",
+			"Team Name": "Team Will",
+			"Autodraft": false,
+			"Mode": "hard",
+			"Tank": false
+		}
+	],
+	"Data Path": 
+	[
+		"./game_logs/total_game_logs2022.csv"
+	],
+	"Positional Data Path": "./game_logs/positions.csv",
+	"Roster Size": 12,
+	"Lineup Size": 6,
+	"Positional Constraints": true,
+	"Allow Injuries": true,
+	"Dramatic": true,
+	"Play-by-play": false, 
+	"Draft Rules": 
+	[
+		{
+			"Rounds": 8,
+			"Snake": true,
+			"Scouting": true,
+			"Scouting Games": 8
+		},
+		{
+			"Rounds": 3,
+			"Snake": false,
+			"Scouting": true,
+			"Scouting Games": 8
+		}
+	],
+	"Scoring Rules":
+	{
+		"Points": 1,
+		"Field Goals": 0.4,
+		"Field Goal Attempts": -0.70,
+		"Free Throws": 0.4,
+		"Free Throw Attempts": -0.4,
+		"Offensive Rebounds": 0.7,
+		"Defensive Rebounds": 0.3,
+		"Steals": 1,
+		"Assists": 0.7,
+		"Blocks": 0.7,
+		"Turnovers": -1,
+		"Personal Fouls": -0.4,
+		"Randomization": {
+			"Enable": true,
+			"Distribution": "normal",
+			"Standard Deviation": 0.1,
+			"Flip Parity": false
+		}
+	}
+}
+
+
