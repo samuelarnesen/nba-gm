@@ -1,10 +1,10 @@
-from data import PlayerData, GameData
+from data import PlayerData, GameData, CumulativeGameData
 from enum import Enum, auto
 import sys, math, random, re
 
 class Player:
 
-	def __init__(self, name, data, years_left=0, value=None, number_of_scouting_games=-1, alias=None):
+	def __init__(self, name, data, years_left=0, value=None, number_of_scouting_games=-1, alias=None, roto=False):
 		self.name = name
 		self.years_left = years_left
 		self.data = data
@@ -14,11 +14,15 @@ class Player:
 		self.points_this_year = 0
 		self.box_score_stats = [0, 0, 0]
 		self.box_score_stats_this_year = [0, 0, 0]
+		self.cumulative_game = CumulativeGameData()
+		self.cumulative_game_this_year = CumulativeGameData()
 		self.injury_status = InjuryStatus.HEALTHY
 
 		self.use_scouting = number_of_scouting_games >= 0
 		self.scouting_report = None
+		self.scout_value = None
 		self.alias = name if alias == None else alias
+		self.roto = roto
 
 
 	def set_name(self, name):
@@ -35,7 +39,7 @@ class Player:
 
 	def set_data(self, data):
 		if not isinstance(data, PlayerData):
-			print("Error: Data added is of type {}, not of type PlayerData. Action denied".format(type(data)), file=sys.stderr)
+			print("Error: Data added is of type {}, not of type PlayerData. Action denied".format(type(data)))
 			return
 		self.data = data
 
@@ -53,7 +57,7 @@ class Player:
 
 	def sample_game(self, real_game=True):
 		if isinstance(self.data, type(None)):
-			print("Error: No games to sample from. Action denied", file=sys.stderr)
+			print("Error: No games to sample from. Action denied")
 			return
 		game = self.data.sample_game()
 		while math.isnan(game.score()):
@@ -63,11 +67,16 @@ class Player:
 			game = GameData.limit_game(game)
 		elif self.injury_status == InjuryStatus.OUT:
 			game = GameData.out_game(game)
-		score = game.score()
 
 		if real_game:
-			self.total_points += score
-			self.points_this_year += score
+			self.cumulative_game.add(game)
+			self.cumulative_game_this_year.add(game)
+
+			if not self.roto:
+				score = game.score(roto=self.roto)
+				self.total_points += score
+				self.points_this_year += score
+
 			self.games_started += 1
 			self.games_started_this_year += 1
 			self.use_scouting = False
@@ -75,14 +84,26 @@ class Player:
 		return game
 
 	def generate_scouting_report(self, number_of_games):
+		self.use_scouting = True
 		number_of_games_to_use = random.randrange(1, number_of_games)
 		games = [self.sample_game(real_game=False) for i in range(number_of_games_to_use)]
-		avg_score = round(sum([game.score() for game in games]) / number_of_games_to_use, 0)
-		self.scouting_report = "Value: {}, Games: {}".format(str(avg_score), number_of_games_to_use)
-		self.use_scouting = True
+
+		if self.roto:
+			total_game = CumulativeGameData()
+			for game in games:
+				total_game.add(game)
+			self.scouting_report = "Value: {}, Games: {}".format(str(total_game), number_of_games_to_use)
+			self.scout_value = (str(total_game), number_of_games_to_use)
+		else:
+			avg_score = round(sum([game.score() for game in games]) / number_of_games_to_use, 0)
+			self.scouting_report = "Value: {}, Games: {}".format(str(avg_score), number_of_games_to_use)
+			self.scout_value = (avg_score, number_of_games_to_use)
 
 	def get_scouting_report(self):
 		return self.scouting_report
+
+	def get_scout_value(self):
+		return self.scout_value
 
 	def get_name(self):
 		return self.name
@@ -102,10 +123,13 @@ class Player:
 	def reset_points_this_year(self):
 		self.points_this_year = 0
 		self.games_started_this_year = 0
+		self.cumulative_game_this_year = CumulativeGameData()
 
 	def get_value(self):
 		if self.games_started == 0:
 			return "?"
+		if self.roto:
+			return self.cumulative_game
 		return round(self.total_points / self.games_started)
 
 	def get_position_name(self):
@@ -168,9 +192,12 @@ class Player:
 		else:
 			return other.get_name() == self.name
 
+	def __hash__(self):
+		return hash(self.get_name())
+
 class PlayerGroup:
 
-	def __init__(self, internal_list=None):
+	def __init__(self, internal_list=None, roto=False):
 		self.players = []
 		if internal_list != None:
 			for player in internal_list:
@@ -178,12 +205,12 @@ class PlayerGroup:
 					self.players.append(player)
 				elif isinstance(player, tuple):
 					if len(player) == 3:
-						self.players.append(Player(player[0], player[1], player[2]))
+						self.players.append(Player(player[0], player[1], player[2], roto=roto))
 					else:
-						print("Error: PlayerGroup could not be created. Tuple element of wrong length", file=sys.stderr)
+						print("Error: PlayerGroup could not be created. Tuple element of wrong length")
 						self.players = []
 				else:
-					print("Error: PlayerGroup could not be created. Element of wrong type", file=sys.stderr)
+					print("Error: PlayerGroup could not be created. Element of wrong type")
 					self.players = []
 
 	def __contains__(self, player):
@@ -227,7 +254,7 @@ class PlayerGroup:
 
 	def get_player_by_name(self, name):
 		for player in self.players:
-			if player.get_name().lower() == name.lower():
+			if str(player.get_alias()).lower() == name.lower():
 				return player
 
 		candidates = []
@@ -240,7 +267,7 @@ class PlayerGroup:
 		if len(candidates) == 1:
 			return candidates[0]
 		elif len(candidates) > 1:
-			print("Error: {} does not refer to a single player", name)
+			print("Warn: {} does not refer to a single player".format(name))
 		return None
 
 	def append(self, player):
@@ -255,7 +282,7 @@ class PlayerGroup:
 		if not isinstance(player_to_remove, type(None)):
 			self.players.remove(player_to_remove)
 		else:
-			print("Error: player could not be removed", file=sys.stderr)
+			print("Warn: player could not be removed")
 		return player_to_remove
 
 class InjuryStatus(Enum):

@@ -1,5 +1,5 @@
 from player import Player, PlayerGroup
-from data import GameData
+from data import GameData, RotoGameData
 import sys, random
 
 class Team:
@@ -11,8 +11,9 @@ class Team:
 		self.bench_players = PlayerGroup()
 		self.max_roster_size = rules.get_roster_size()
 		self.lineup_size = rules.get_lineup_size()
-		self.positional_constraints = rules.positionally_constrained()
+		self.positional_constraints = rules.is_positionally_constrained()
 		self.aliases_to_names = {}
+		self.roto_stats = RotoGameData()
 
 	def __str__(self):
 		return "\n{}\nStarters:\n{}\n\nBench:\n{}".format(self.name, self.starting_players, self.bench_players)
@@ -54,7 +55,7 @@ class Team:
 	def add_player(self, player, check_size=True):
 
 		if len(self.all_players) >= self.max_roster_size and check_size:
-			print("Error: Roster length exceeds maximum roster size {}. Addition denied".format(self.max_roster_size), file=sys.stderr)
+			print("Warn: Roster length exceeds maximum roster size {}. Addition denied".format(self.max_roster_size))
 			return
 
 		self.all_players.append(player)
@@ -86,7 +87,7 @@ class Team:
 			player = self.aliases_to_names[player]
 
 		if player not in self.all_players:
-			print("Error: Player {} not on team".format(player), file=sys.stderr)
+			print("Warn: Player {} not on team".format(player))
 			return False
 
 		player_to_cut = self.all_players.remove(player)
@@ -99,11 +100,11 @@ class Team:
 			player = self.aliases_to_names[player]
 
 		if player not in self.bench_players:
-			print("Error: Player {} not on bench".format(player), file=sys.stderr)
+			print("Warn: Player {} not on bench".format(player))
 			return False
 
 		if len(self.starting_players) >= self.lineup_size:
-			print("Error: Starting roster size exceeded", file=sys.stderr)
+			print("Warn: Starting roster size exceeded")
 			return False
 
 		player_to_move = self.bench_players.remove(player)
@@ -117,7 +118,7 @@ class Team:
 			player = self.aliases_to_names[player]
 
 		if player not in self.starting_players:
-			print("Error: Player {} not in starting roster".format(player), file=sys.stderr)
+			print("Warn: Player {} not in starting roster".format(player))
 			return False
 
 		player_to_move = self.starting_players.remove(player)
@@ -134,7 +135,7 @@ class Team:
 			return False
 
 		if not self.positional_constraints:
-			return False
+			return True
 
 		current_position = 1
 		failed_once = False
@@ -154,8 +155,8 @@ class Team:
 		old_bench = PlayerGroup([player for player in self.bench_players])
 		old_starters = PlayerGroup([player for player in self.starting_players])
 		for player_to_remove, player_to_start in zip(old_starters, old_bench):
-			success = success and self.remove_player_from_starting_lineup(player_to_remove)
-			success = success and self.move_player_to_starting_lineup(player_to_start)
+			success = success and self.remove_player_from_starting_lineup(player_to_remove.get_name())
+			success = success and self.move_player_to_starting_lineup(player_to_start.get_name())
 		return success
 
 	def update_from_box_score(self, box_score):

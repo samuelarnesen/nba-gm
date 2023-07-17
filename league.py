@@ -19,6 +19,7 @@ class League:
 		self.max_roster_size = 12
 		self.lineup_size = 6
 		self.reigning_champion = None
+		self.reigning_finalist = None
 		self.current_year = 1
 		self.rules = None
 
@@ -28,6 +29,7 @@ class League:
 
 		self.rules = Rules(json_obj)
 		self.data = Database(json_obj["Data Path"], self.rules, json_obj["Positional Data Path"])
+		self.draft_center.set_roto_mode(self.rules.is_roto())
 
 		for participant in json_obj["Participants"]:
 			if participant["Autodraft"]:
@@ -47,7 +49,7 @@ class League:
 
 		self.current_year = year + 1
 		number_of_rounds, snake, scouting, scouting_games = self.rules.get_draft_rules().get_properties_this_year(self.current_year)
-		draft_order, reverse_draft_order = self.draft_center.get_draft_order(self.participants, self.reigning_champion)
+		draft_order, reverse_draft_order = self.draft_center.get_draft_order(self.participants, self.reigning_champion, self.reigning_finalist)
 
 		print("Draft Order")
 		for i, participant in enumerate(draft_order):
@@ -76,7 +78,7 @@ class League:
 				valid_selection = False
 				while not valid_selection:
 					drafter = Participant.get_participant_by_name(participant.get_drafter_name(year, current_round, one_index=False), self.participants)
-					print("{}'s turn to select:".format(drafter))
+					print("{}'s turn to select:\n".format(drafter))
 					selection = drafter.send_pick_to_commissioner(draft_group)
 
 					if selection == "pass":
@@ -90,7 +92,7 @@ class League:
 					else:
 						response = self.accept_commands(command=selection, display=False)
 						if response == TransactionResult.FAILURE:
-							print("{} is not a draftable player or a recognized command".format(selection), file=sys.stderr)
+							print("{} is not a draftable player or a recognized command".format(selection))
 
 		self.free_agents = PlayerGroup([player for player in draft_group])
 
@@ -105,7 +107,7 @@ class League:
 		for participant in self.participants:
 			team_eligible = participant.check_roster_eligibility()
 			if not team_eligible:
-				print("Error: {}'s lineup is not eligible".format(participant.get_name()), file=sys.stderr)
+				print("Warn: {}'s lineup is not eligible".format(participant.get_name()))
 			all_eligible = all_eligible and team_eligible
 		return all_eligible
 
@@ -116,18 +118,18 @@ class League:
 		season_started = self.check_roster_eligibility()
 
 		while not season_started:
-			print("Season failed to start. At least one roster is not eligible", file=sys.stderr)
+			print("Season failed to start. At least one roster is not eligible")
 			self.accept_commands()
 			season_started = self.check_roster_eligibility()
 
 		for event_type, (contender_one, contender_two) in Scheduler.schedule(self.participants, 2):
 			if event_type == Event.GAME:
 				if random.random() > 0.5:
-					winner, (contender_one_game, contender_two_game) = MatchupCenter.play_game(contender_one, contender_two, False, self.rules.play_by_play_mode())
+					winner, (contender_one_game, contender_two_game), (contender_one_score, contender_two_score) = MatchupCenter.play_game(contender_one, contender_two, False, self.rules.play_by_play_mode(), self.rules.is_roto())
 				else:
-					 winner, (contender_two_game, contender_one_game) = MatchupCenter.play_game(contender_two, contender_one, False, self.rules.play_by_play_mode())
-				contender_one.add_game(contender_one==winner, contender_one_game.score())
-				contender_two.add_game(contender_two==winner, contender_two_game.score())
+					 winner, (contender_two_game, contender_one_game), (contender_two_score, contender_one_score) = MatchupCenter.play_game(contender_two, contender_one, False, self.rules.play_by_play_mode(), self.rules.is_roto())
+				contender_one.add_game(contender_one==winner, contender_one_score, game=contender_one_game, other=contender_two_game)
+				contender_two.add_game(contender_two==winner, contender_two_score, game=contender_two_game, other=contender_one_game)
 
 				if self.rules.play_by_play_mode():
 					contender_one.update_from_box_score(contender_one_game)
@@ -139,7 +141,7 @@ class League:
 				self.accept_commands()
 				acceptible_teams = self.check_roster_eligibility()
 				if not acceptible_teams:
-					print("Error: One team does not meet roster rules", file=sys.stderr)
+					print("Warn: One team does not meet roster rules")
 					self.accept_commands()
 					acceptible_teams = self.check_roster_eligibility()
 
@@ -149,7 +151,7 @@ class League:
 		self.sleep(3)
 		rankings = self.get_rankings(display=True)
 
-		if not self.rules.play_by_play_mode():
+		if not self.rules.play_by_play_mode() and not self.rules.is_roto():
 			self.sleep(3)
 			print("This year's MVP is...")
 			self.sleep(3)
@@ -165,11 +167,9 @@ class League:
 
 
 	def run_championship(self, dramatic=True):
-
-		this_years_results = [participant.get_wins_this_season() for participant in self.participants]
-		rankings = [(participant, wins) for wins, participant in reversed(sorted(zip(this_years_results, self.participants), key=lambda pair: pair[0]))]
-		contender_one = rankings[0][0]
-		contender_two = rankings[1][0]
+		rankings = self.get_rankings(display=False)
+		contender_one = rankings[0]
+		contender_two = rankings[1]
 
 		print("The finals matchup is...")
 		print("1. {} v 2. {}".format(contender_one, contender_two))
@@ -183,21 +183,27 @@ class League:
 		for game in range(7):
 			if dramatic:
 				self.sleep(2)
-			winner, _ = MatchupCenter.play_game(contender_one, contender_two, display=True, play_by_play=self.rules.play_by_play_mode())
+			print(f"Finals Game {(game + 1)}")
+			winner, _, _ = MatchupCenter.play_game(contender_one, contender_two, display=True, play_by_play=self.rules.play_by_play_mode(), roto=self.rules.is_roto())
 			contender_one_wins = contender_one_wins + 1 if winner == contender_one else contender_one_wins
 			print("{} ({}) - {} ({})\n".format(contender_one, contender_one_wins, contender_two, (game + 1) - contender_one_wins))
 			if contender_one_wins >= 4 or ((game + 1) - contender_one_wins) >= 4:
 				break
 
 		champion = contender_one if contender_one_wins >= 4 else contender_two
+		finalist = contender_one if contender_one_wins < 4 else contender_two
 		champion.add_championship()
+		finalist.add_championship_lost()
 
 		self.sleep(1)
-		print("\nChampion: {} in {} games!!!\n".format(champion.get_name().upper(), game + 1))
+		print("\n...And your champion is...")
+		self.sleep(1)
+		print("{} in {} games!!!\n".format(champion.get_name().upper(), game + 1))
 		self.sleep(2)
 		self.reigning_champion = champion
+		self.reigning_finalist = finalist
 
-		if not self.rules.play_by_play_mode():
+		if not self.rules.play_by_play_mode() and not self.rules.is_roto():
 			print("This year's Finals MVP is...")
 			self.sleep(3)
 			mvp, mvp_score = champion.find_star()
@@ -224,6 +230,7 @@ class League:
 	def accept_commands(self, command=None, display=True):
 		if display:
 			print("\nAccepting commands")
+
 		results, extras = TransactionCenter.accept_commands(self.participants, command)
 
 		for extra in extras:
@@ -239,22 +246,23 @@ class League:
 		print("Final Results")
 		for participant in self.participants:
 			total_results = participant.get_total_results(year_by_year=False)
-			runner_ups = total_results[1] if len(total_results) > 1 else 0
-			print("{}: {} wins, {} Finals".format(participant.get_name(), participant.get_championships(), runner_ups))
+			print("{}: {} wins, {} Finals".format(participant.get_name(), participant.get_championships(), participant.get_championships_lost()))
 
 		print()
 		self.sleep(3)
-		print("Your All-Decade First Team is...")
+		if not self.rules.play_by_play_mode() and not self.rules.is_roto():
+			print("Your All-Decade First Team is...")
 
-		all_players = self.draft_center.get_all_players()
-		active_players = [player for player in filter(lambda x: x.get_total_points() != 0, all_players)]
-		average_player_pts = sum([player.get_total_points() for player in active_players]) / len(active_players)
-		sorted_players = sorted(active_players, key=lambda x: x.get_total_points() - average_player_pts, reverse=True)
+			all_players = self.draft_center.get_all_players()
+			active_players = [player for player in filter(lambda x: x.get_total_points() != 0, all_players)]
+			average_player_pts = sum([player.get_total_points() for player in active_players]) / len(active_players)
+			sorted_players = sorted(active_players, key=lambda x: x.get_total_points() - average_player_pts, reverse=True)
 
-		for player in sorted_players[0:5]:
-			print("{} ({}, {}, {})". format(player.get_name(), player.get_value(), player.get_games_started(), round(player.get_total_points(), 1)))
-			self.sleep(1.5)
+			for player in sorted_players[0:5]:
+				print("{} ({}, {}, {})". format(player.get_name(), player.get_value(), player.get_games_started(), round(player.get_total_points(), 1)))
+				self.sleep(1.5)
 		print()
+		print("End game")
 
 
 	def get_rankings(self, display=False):
@@ -263,8 +271,9 @@ class League:
 		if display:
 			print()
 			for i, participant in enumerate(rankings):
-				print("{}. {} ({}-{}, {}ppg)".format(i + 1, participant.get_name(), participant.get_wins_this_season(), \
-					participant.get_losses_this_season(), participant.get_ppg_this_season()))
+				display_stat = f"{participant.get_ppg_this_season()}ppg"  if not self.rules.is_roto() else f"({participant.get_ppg_this_season()}ppg, {participant.get_roto_stats()})"
+				print("{}. {} ({}-{}, {})".format(i + 1, participant.get_name(), participant.get_wins_this_season(), \
+					participant.get_losses_this_season(), display_stat))
 			print()
 		return rankings
 

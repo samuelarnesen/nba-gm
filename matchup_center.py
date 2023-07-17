@@ -4,21 +4,25 @@ from player import Player
 class MatchupCenter:
 
 	@staticmethod
-	def play_game(contender_one, contender_two, display=False, play_by_play=False):
+	def play_game(contender_one, contender_two, display=False, play_by_play=False, roto=False):
 		if play_by_play:
 			return MatchupCenter.play_by_play_game(contender_one, contender_two, display)
 		else:
-			return MatchupCenter.play_regular_game(contender_one, contender_two, display)
+			return MatchupCenter.play_regular_game(contender_one, contender_two, display, roto)
 
 	@staticmethod
-	def play_regular_game(contender_one, contender_two, display=False, play_by_play=False):
+	def play_regular_game(contender_one, contender_two, display=False, roto=False):
 		contender_one_game = contender_one.play_game()
 		contender_two_game = contender_two.play_game()
 
-		winner = contender_one if contender_one_game.score() >= contender_two_game.score() else contender_two
+		contender_one_score = contender_one_game.score(other=contender_two_game, roto=roto)
+		contender_two_score = contender_two_game.score(other=contender_one_game, roto=roto)
+
+		winner = contender_one if contender_one_score >= contender_two_score else contender_two
 		if display:
-			print("{} ({}) - {} ({})". format(contender_one.get_name(), round(contender_one_game.score(), 1), contender_two, round(contender_two_game.score(), 1)))
-		return winner, (contender_one_game, contender_two_game)
+			print("{} ({}) - {} ({})". format(contender_one.get_name(), round(contender_one_score, 2), contender_two, round(contender_two_score, 2)))
+		return winner, (contender_one_game, contender_two_game), (contender_one_score, contender_two_score)
+
 
 	@staticmethod
 	def play_by_play_game(contender_one, contender_two, display=False, max_possessions=200):

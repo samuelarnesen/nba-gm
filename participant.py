@@ -1,6 +1,7 @@
 from team import Team
 from player import Player
 from draft_picks import DraftPickStore
+from data import RotoGameData
 import re, sys, random
 
 class Participant:
@@ -9,6 +10,7 @@ class Participant:
 		self.name = name
 		self.team = Team(rules=rules.get_team_rules(), name=team_name)
 		self.championships_won = 0
+		self.championships_lost = 0
 		self.wins_this_season = 0
 		self.losses_this_season = 0
 		self.wins_last_season = 0
@@ -22,6 +24,8 @@ class Participant:
 		self.year = 1
 		self.total_results = []
 		self.points_results = []
+		self.roto_stats = RotoGameData()
+		self.ready = False
 
 	def __str__(self):
 		return self.name
@@ -31,6 +35,15 @@ class Participant:
 
 	def __contains__(self, player):
 		return player in self.team
+
+	def mark_ready(self):
+		self.ready = True
+
+	def reset_ready(self):
+		self.ready = False
+
+	def is_ready(self):
+		return self.ready
 
 	def restore_to_health(self):
 		self.team.restore_to_health()
@@ -49,12 +62,18 @@ class Participant:
 	def start_championship(self):
 		self.team.start_championship()	
 
-	def add_game(self, win, points):
+	def add_game(self, win, points, game=None, other=None):
 		self.points_this_year += points
 		if win:
 			self.wins_this_season += 1
 		else:
 			self.losses_this_season += 1
+
+		if self.rules.is_roto() and game and other:
+			self.roto_stats.add(game=game, other=other)
+		
+	def get_roto_stats(self):
+		return self.roto_stats
 
 	def update_from_box_score(self, box_score):
 		self.team.update_from_box_score(box_score)
@@ -69,10 +88,12 @@ class Participant:
 		self.points_this_year = 0
 		self.year += 1
 		self.total_results.append(ranking)
+		self.roto_stats = RotoGameData()
 
 	def send_pick_to_commissioner(self, draftable_players):
 		if not self.autodraft:
-			return input().strip(" ")
+			input_val = input().strip()
+			return input_val
 		else:
 			return draftable_players[-1].get_name()
 
@@ -108,11 +129,14 @@ class Participant:
 			print()
 			return self.team != None
 		else:
-			print("Error: command not recognized", file=sys.stderr)
+			print("Warn: command not recognized")
 			return False
 
 	def add_championship(self):
 		self.championships_won += 1
+
+	def add_championship_lost(self):
+		self.championships_lost += 1
 
 	def get_name(self):
 		return self.name
@@ -132,6 +156,9 @@ class Participant:
 
 	def get_championships(self):
 		return self.championships_won
+
+	def get_championships_lost(self):
+		return self.championships_lost
 
 	def get_wins_this_season(self):
 		return self.wins_this_season
@@ -153,6 +180,9 @@ class Participant:
 
 	def get_ppg_this_season(self):
 		return round(self.points_this_year / self.get_games_played(), 1)
+
+	def get_roto_stats_this_season(self):
+		return self.team.get_roto_stats_this_season(avg=True)
 
 	def get_championships(self):
 		return self.championships_won

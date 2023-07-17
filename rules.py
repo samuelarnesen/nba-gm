@@ -4,10 +4,18 @@ class Rules:
 
 	def __init__(self, config):
 		self.play_by_play = config["Play-by-play"]
-		self.dramatic = config["Dramatic"]
+		self.discord_mode = config["Discord Mode"]
+		self.dramatic = config["Dramatic"] and not self.discord_mode
 		self.team_rules = TeamRules(config["Lineup Size"], config["Roster Size"], config["Positional Constraints"], config["Allow Injuries"])
 		self.draft_rules = DraftRules(config["Draft Rules"])
-		self.scoring_rules = ScoringRules(config["Scoring Rules"]) if not config["Play-by-play"] else None
+		self.roto_mode = config["Roto"]
+
+		self.scoring_rules = None
+		if not config["Play-by-play"]:
+			if self.roto_mode:
+				self.scoring_rules = ScoringRules(config["Scoring Rules"]["Roto"])
+			else:
+				self.scoring_rules = ScoringRules(config["Scoring Rules"]["Standard"])
 
 	def play_by_play_mode(self):
 		return self.play_by_play
@@ -24,12 +32,18 @@ class Rules:
 	def get_scoring_rules(self):
 		return self.scoring_rules
 
+	def is_discord_mode(self):
+		return self.discord_mode
+
+	def is_roto(self):
+		return self.roto_mode
+
 class TeamRules:
 
-	def __init__(self, starting_lineup_size, roster_size, positionally_constrainted, allow_injuries):
+	def __init__(self, starting_lineup_size, roster_size, positionally_constrained, allow_injuries):
 		self.starting_lineup_size = starting_lineup_size
 		self.roster_size = roster_size
-		self.positionally_constrainted = positionally_constrainted
+		self.positionally_constrained = positionally_constrained
 		self.allow_injuries = allow_injuries
 
 	def get_lineup_size(self):
@@ -38,7 +52,7 @@ class TeamRules:
 	def get_roster_size(self):
 		return self.roster_size
 
-	def positionally_constrained(self):
+	def is_positionally_constrained(self):
 		return self.positionally_constrained
 
 	def allow_injuries_mode(self):
@@ -83,9 +97,9 @@ class ScoringRules:
 
 		self.points = self.random_transform(scoring_rules["Points"])
 		self.field_goals = self.random_transform(scoring_rules["Field Goals"])
-		self.field_goal_attempts = self.random_transform(scoring_rules["Field Goal Attempts"])
+		self.field_goal_attempts = self.random_transform(scoring_rules.get("Field Goal Attempts"))
 		self.free_throws = self.random_transform(scoring_rules["Free Throws"])
-		self.free_throw_attempts = self.random_transform(scoring_rules["Free Throw Attempts"])
+		self.free_throw_attempts = self.random_transform(scoring_rules.get("Free Throw Attempts"))
 		self.offensive_rebounds = self.random_transform(scoring_rules["Offensive Rebounds"])
 		self.defensive_rebounds = self.random_transform(scoring_rules["Defensive Rebounds"])
 		self.steals = self.random_transform(scoring_rules["Steals"])
@@ -95,6 +109,9 @@ class ScoringRules:
 		self.personal_fouls = self.random_transform(scoring_rules["Personal Fouls"])
 
 	def random_transform(self, original_number):
+		if not original_number:
+			original_number = 0
+
 		if not self.randomize:
 			return original_number
 
@@ -150,9 +167,11 @@ class ScoringRules:
 		print()
 		print("Points:", round(self.points, 2))
 		print("Field Goals:", round(self.field_goals, 2))
-		print("Field Goal Attempts:", round(self.field_goal_attempts, 2))
+		if self.field_goal_attempts:
+			print("Field Goal Attempts:", round(self.field_goal_attempts, 2))
 		print("Free Throws:", round(self.free_throws, 2))
-		print("Free Throw Attempts:", round(self.free_throw_attempts, 2))
+		if self.free_throw_attempts:
+			print("Free Throw Attempts:", round(self.free_throw_attempts, 2))
 		print("Offensive Rebounds:", round(self.offensive_rebounds, 2))
 		print("Defensive Rebounds:", round(self.defensive_rebounds, 2))
 		print("Steals", round(self.steals, 2))

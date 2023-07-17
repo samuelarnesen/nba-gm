@@ -13,7 +13,6 @@ class Agent(Participant):
 
 	def set_mode(self, mode, tank=False, threshold=5):
 		self.player_scores = {}
-		self.replacement_level = 0
 		self.replacement_percentile = 0.25
 		self.replacement_observations = {}
 		self.tank = tank
@@ -40,8 +39,14 @@ class Agent(Participant):
 		return False
 
 	def get_projected_points(self, player, number_of_games_to_sample):
-		if player.get_name() in self.player_scores:
-			return self.player_scores[player.get_name()]
+
+		if player in self.player_scores:
+			return self.player_scores[player]
+
+		scout_value = player.get_scout_value()
+		if scout_value != None:
+			return scout_value[0]
+			
 		average_player_points = 0
 		for game in range(number_of_games_to_sample):
 			average_player_points += (player.sample_game(real_game=False).score() / number_of_games_to_sample)
@@ -50,21 +55,21 @@ class Agent(Participant):
 
 	def send_pick_to_commissioner(self, draftable_players):
 
-		def score_players(number_of_games_to_sample):
+		def select_player(number_of_games_to_sample):
 
 			overall_average = 0
 			player_dict = {}
 			for player in draftable_players:
 				average_player_points = self.get_projected_points(player, number_of_games_to_sample)
-				player_dict[player.get_name()] = average_player_points
+				player_dict[player] = average_player_points
 				overall_average += (average_player_points / len(draftable_players))
-				for pos in range(player.get_position() - 1, player.get_position() + 2):
+				for pos in range(max(player.get_position() - 1, 1), min(player.get_position() + 2, 6)):
 					if pos not in self.replacement_observations:
 						self.replacement_observations[pos] = {}
-					if player.get_name() not in self.replacement_observations[pos]:
-						self.replacement_observations[pos][player.get_name()] = average_player_points
-				if player.get_name() not in self.player_scores:
-					self.player_scores[player.get_name()] = average_player_points
+					if player not in self.replacement_observations[pos]:
+						self.replacement_observations[pos][player] = average_player_points
+				if player not in self.player_scores:
+					self.player_scores[player] = average_player_points
 
 			replacement_score_by_position = {}
 			for pos in self.replacement_observations:
@@ -73,20 +78,24 @@ class Agent(Participant):
 
 			player_list = []
 			for player in draftable_players:
-				player_dict[player.get_name()] = (player_dict[player.get_name()] - replacement_score_by_position[player.get_position()])
-				player_dict[player.get_name()] *= min(11 - self.year, player.get_years_left()) if player_dict[player.get_name()] > 0 else 1
-				player_list.append((player_dict[player.get_name()], player.get_name()))
+				if player.get_scout_value() != None:
+					sample_length = player.get_scout_value()[1]
+					player_dict[player] = ((sample_length / 8) * player_dict[player]) + ((1 - (sample_length / 8)) * replacement_score_by_position[player.get_position()])
+				player_dict[player] = (player_dict[player] - replacement_score_by_position[player.get_position()])
+				if player_dict[player] > 0:
+					player_dict[player] *= (min(11 - self.year, player.get_years_left()) if player_dict[player] > 0 else 1)
+				player_list.append((player_dict[player], player))
 
-			player_rankings = [name for _, name in reversed(sorted(player_list, key=lambda pair: pair[0]))]
-			return player_rankings
+			player_rankings = [(name, score) for score, name in reversed(sorted(player_list, key=lambda pair: pair[0]))]
+			return player_rankings[0][0], player_rankings[0][1]
 
 		if self.mode == None:
 			print("Error: agent mode is not set", file=sys.stderr)
 			return False
 
-		player_to_select = score_players(self.game_samples)[0]
+		player_to_select, score = select_player(self.game_samples)
 		print(player_to_select)
-		return player_to_select
+		return player_to_select.get_name()
 
 	def set_lineup(self, year, games_out=0):
 
@@ -110,11 +119,11 @@ class Agent(Participant):
 		self.team.bench_everyone()
 
 		for player in player_rankings[0:self.lineup_size]:
-			success = self.team.move_player_to_starting_lineup(player)
+			success = self.team.move_player_to_starting_lineup(player.get_name())
 
 		if len(player_rankings) > self.max_roster_size:
 			for player in player_rankings[self.max_roster_size:]:
-				self.team.cut_player(player)
+				self.team.cut_player(player.get_name())
 
 		eligible = self.check_roster_eligibility()
 		if eligible:
@@ -125,7 +134,7 @@ class Agent(Participant):
 		for combo in sorted_combo_scores:
 			self.team.bench_everyone()
 			for player in combo:
-				self.team.move_player_to_starting_lineup(player)
+				self.team.move_player_to_starting_lineup(player.get_name())
 			if self.check_roster_eligibility():
 				return True
 

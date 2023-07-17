@@ -16,10 +16,10 @@ class DraftPickStore:
 			year -= 1
 			current_round -= 1
 		if year < 0 or year >= len(self.store):
-			print("Error: pick is not an eligible pick", file=sys.stderr)
+			print("Warn: pick is not an eligible pick", file=sys.stderr)
 			return ""
 		if current_round < 0 or current_round >= len(self.store[year]):
-			print("Error: pick is not an eligible pick", file=sys.stderr)
+			print("Warn: pick is not an eligible pick", file=sys.stderr)
 			return ""
 		return self.store[year][current_round]
 
@@ -28,7 +28,7 @@ class DraftPickStore:
 
 		if not suppress_check:
 			if self.get_pick_owner(year, pick_round) != owner:
-				print("Error: pick could not be transferred because it is not owned by sender", file=sys.stderr)
+				print("Warn: pick could not be transferred because it is not owned by sender", file=sys.stderr)
 				return False
 
 		if one_index:

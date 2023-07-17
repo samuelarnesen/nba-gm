@@ -13,21 +13,36 @@ class TransactionResult(Enum):
 class TransactionCenter:
 
 	@staticmethod
+	def read_input(outside_command=None):
+		input_value = outside_command
+		if outside_command == None:
+			input_value = input()
+		return input_value
+
+	@staticmethod
 	def accept_commands(participants, outside_command=None):
 		results = []
 		extras = []
-		command, args = CommandParser.parse_command(input() if outside_command == None else outside_command)
-		while command != Commands.CONTINUE:
+
+		input_value = TransactionCenter.read_input(outside_command)
+		command, args = CommandParser.parse_command(input_value)
+		while command != Commands.CONTINUE and not TransactionCenter.all_participants_ready(participants):
 			result = None
 			extra = None
 			if command == Commands.CLEAR:
 				result = TransactionCenter.clear()
+				print("Command executed")
 			elif command == Commands.ROSTER_MOVE:
 				results, extra = TransactionCenter.process_roster_move(participants, args)
+				print("Command executed")
 			elif command == Commands.TRADE:
 				result = TransactionCenter.process_trade(participants, args)
+				print("Command executed")
+			elif command == Commands.READY:
+				TransactionCenter.mark_participant_as_ready(participants, args)
 			else:
-				print("Error: Do not recognize command", file=sys.stderr)
+				print("Warn: Do not recognize command. Input was {}. Outside command was {}".format(input_value, outside_command), file=sys.stderr)
+
 
 			if not isinstance(result, type(None)):
 				results.append(result)
@@ -38,8 +53,13 @@ class TransactionCenter:
 			if outside_command != None:
 				break
 
-			command, args = CommandParser.parse_command(input())
+			if TransactionCenter.all_participants_ready(participants):
+				break
 
+			input_value = TransactionCenter.read_input(outside_command=None)
+			command, args = CommandParser.parse_command(input_value)
+
+		TransactionCenter.reset_all_participant_ready_status(participants)
 		return results, extras
 
 	
@@ -48,14 +68,14 @@ class TransactionCenter:
 
 		def meets_roster_size_limits(party, sending_length, receiving_length):
 			if not party.can_accept_trade(sending_length, receiving_length):
-				print("Error: {} would have too many players.".format(party))
+				print("Warn: {} would have too many players.".format(party))
 				return False
 			return True
 
 		def has_players_check(party, senders):
 			for player in senders:
 				if player not in party:
-					print("Error: {} does not have {}".format(party, player))
+					print("Warn: {} does not have {}".format(party, player))
 					return False
 			return True
 
@@ -63,7 +83,7 @@ class TransactionCenter:
 			for pick in picks:
 				year, name, pick_round = pick
 				if party.get_pick_by_year_and_round(year, pick_round) != name:
-					print("Error: {} does not own pick".format(party), file=sys.stderr)
+					print("Warn: {} does not own pick".format(party), file=sys.stderr)
 					return False
 			return True
 
@@ -92,7 +112,7 @@ class TransactionCenter:
 		party_two_pick_senders = args[5]
 
 		if not isinstance(party_one, Participant) or not isinstance(party_two, Participant):
-			print("Error: At least one participant could not be found", file=sys.stderr)
+			print("Warn: At least one participant could not be found", file=sys.stderr)
 			return TransactionResult.FAILURE
 
 		if not meets_roster_size_limits(party_one, len(party_one_senders), len(party_two_senders)):
@@ -115,7 +135,7 @@ class TransactionCenter:
 		send_picks(party_one, party_one_pick_senders, party_two.get_name())
 		send_picks(party_two, party_two_pick_senders, party_one.get_name())
 
-		print("Trade Executed\n")
+		print("Trade complete\n")
 		return TransactionResult.SUCCESS_NO_ACTION
 
 	@staticmethod
@@ -128,6 +148,7 @@ class TransactionCenter:
 		cut_players = []
 		participant = Participant.get_participant_by_name(participant_name, participants)
 		if participant != None:
+			participant.reset_ready()
 			for move in moves:
 				result = participant.execute_move(move.strip(" \n"))
 				if isinstance(result, Player):
@@ -135,8 +156,10 @@ class TransactionCenter:
 					responses.append(TransactionResult.SUCCESS_CUT_PLAYER)
 				else:
 					responses.append(TransactionResult.SUCCESS_NO_ACTION if result != False else TransactionResult.FAILURE)
+			if len(moves) > 1:
+				participant.execute_move("display team")
 		else:
-			print("Error: did not recognize participant", file=sys.stderr)
+			print("Warn: did not recognize participant", file=sys.stderr)
 			responses.append(TransactionResult.FAILURE)
 
 		return responses, cut_players
@@ -147,3 +170,21 @@ class TransactionCenter:
 			print()
 		print("Accepting commands")
 		return TransactionResult.SUCCESS_NO_ACTION
+
+	@staticmethod
+	def all_participants_ready(participants):
+		for participant in participants:
+			if not participant.is_ready():
+				return False
+		return True
+
+	@staticmethod
+	def reset_all_participant_ready_status(participants):
+		for participant in participants:
+			participant.reset_ready()
+
+	@staticmethod
+	def mark_participant_as_ready(participants, args):
+		participant = Participant.get_participant_by_name(args[0], participants)
+		if participant is not None:
+			participant.mark_ready()

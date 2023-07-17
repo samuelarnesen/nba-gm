@@ -3,21 +3,21 @@
 	[
 		{
 			"Name": "Sam",
-			"Team Name": "Samtown Sams",
+			"Team Name": "Sam's team",
 			"Autodraft": false,
 			"Mode": "hard",
 			"Tank": false
 		},
 		{
 			"Name": "Matt",
-			"Team Name": "Team Matt",
+			"Team Name": "Matt's team",
 			"Autodraft": false,
 			"Mode": "hard",
 			"Tank": false
 		},
 		{
 			"Name": "Will",
-			"Team Name": "Team Will",
+			"Team Name": "Will's team",
 			"Autodraft": false,
 			"Mode": "hard",
 			"Tank": false
@@ -25,19 +25,21 @@
 	],
 	"Data Path": 
 	[
-		"./game_logs/total_game_logs2022.csv"
+		"./game_logs/total_game_logs_23May21.csv"
 	],
 	"Positional Data Path": "./game_logs/positions.csv",
-	"Roster Size": 12,
+	"Roster Size": 20,
 	"Lineup Size": 6,
-	"Positional Constraints": true,
+	"Positional Constraints": false,
 	"Allow Injuries": true,
 	"Dramatic": true,
+	"Roto": true,
 	"Play-by-play": false, 
+	"Discord Mode": true,
 	"Draft Rules": 
 	[
 		{
-			"Rounds": 8,
+			"Rounds": 7,
 			"Snake": true,
 			"Scouting": true,
 			"Scouting Games": 8
@@ -49,25 +51,44 @@
 			"Scouting Games": 8
 		}
 	],
-	"Scoring Rules":
-	{
-		"Points": 1,
-		"Field Goals": 0.4,
-		"Field Goal Attempts": -0.70,
-		"Free Throws": 0.4,
-		"Free Throw Attempts": -0.4,
-		"Offensive Rebounds": 0.7,
-		"Defensive Rebounds": 0.3,
-		"Steals": 1,
-		"Assists": 0.7,
-		"Blocks": 0.7,
-		"Turnovers": -1,
-		"Personal Fouls": -0.4,
-		"Randomization": {
-			"Enable": true,
-			"Distribution": "normal",
-			"Standard Deviation": 0.1,
-			"Flip Parity": false
+	"Scoring Rules": {
+		"Standard": {
+			"Points": 1,
+			"Field Goals": 0.4,
+			"Field Goal Attempts": -0.70,
+			"Free Throws": 0.4,
+			"Free Throw Attempts": -0.4,
+			"Offensive Rebounds": 0.7,
+			"Defensive Rebounds": 0.3,
+			"Steals": 1,
+			"Assists": 0.7,
+			"Blocks": 0.7,
+			"Turnovers": -1,
+			"Personal Fouls": -0.4,
+			"Randomization": {
+				"Enable": true,
+				"Distribution": "normal",
+				"Standard Deviation": 0.1,
+				"Flip Parity": false
+			}
+		},
+		"Roto": {
+			"Points": 3,
+			"Field Goals": 1,
+			"Free Throws": 1,
+			"Offensive Rebounds": 1.25,
+			"Defensive Rebounds": 1.75,
+			"Steals": 1,
+			"Assists": 2,
+			"Blocks": 1,
+			"Turnovers": -1.5,
+			"Personal Fouls": -1.5,
+			"Randomization": {
+				"Enable": false,
+				"Distribution": "normal",
+				"Standard Deviation": 0.5,
+				"Flip Parity": false
+			}
 		}
 	}
 }

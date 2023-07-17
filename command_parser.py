@@ -7,6 +7,7 @@ class Commands(Enum):
 	CLEAR = auto()
 	NOT_RECOGNIZED = auto()
 	CONTINUE = auto()
+	READY = auto()
 
 class CommandParser:
 
@@ -34,6 +35,8 @@ class CommandParser:
 
 		if ":" in command:
 			split_command = command.split(":")
+			if len(split_command) == 2 and split_command[1].lower().strip() == "ready":
+				return Commands.READY, (split_command[0],)
 			return Commands.ROSTER_MOVE, (split_command[0], split_command[1].split(","))
 
 		trade_match = re.match("Trade (.*) from (.*) to (.*) for (.*)", command)

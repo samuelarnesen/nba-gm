@@ -32,7 +32,7 @@ if __name__ == "__main__":
 		print("Year {}".format(year + 1))
 		league.run_draft(year)
 		league.run_season([27, 54])
-		league.run_championship()
+		league.run_championship(dramatic=True)
 		league.end_season()
 		save_game(league, args.save_filepath)
 
