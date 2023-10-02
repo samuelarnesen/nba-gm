@@ -78,7 +78,12 @@ async def on_message(message):
                     game += 1
                     time.sleep(2)
         else:
-            await message.channel.send(total)
+            print("LENGTH:", len(total))
+            if len(total) > 2000:
+                await message.channel.send(total[0:2000])
+                await message.channel.send(total[2000:])
+            else:
+                await message.channel.send(total)
 
     return
 

@@ -22,6 +22,7 @@ class League:
 		self.reigning_finalist = None
 		self.current_year = 1
 		self.rules = None
+		self.all_auto = True
 
 	def load_from_config(self, config_path="./config.json"):
 		with open(config_path) as f:
@@ -34,9 +35,10 @@ class League:
 		for participant in json_obj["Participants"]:
 			if participant["Autodraft"]:
 				participant_to_add = Agent(participant["Name"], self.rules, participant["Team Name"], participant["Autodraft"])
-				participant_to_add.set_mode(participant["Mode"], participant["Tank"], threshold=6)
+				participant_to_add.set_mode(participant["Mode"])
 			else:
 				participant_to_add = Participant(participant["Name"], self.rules, participant["Team Name"], participant["Autodraft"])
+				self.all_auto = False
 			self.participants.append(participant_to_add)
 
 	def start_league(self):
@@ -62,7 +64,7 @@ class League:
 		draft_group = self.draft_center.get_draftable_players(players_to_add, self.free_agents)
 
 		for current_round in range(number_of_rounds):
-			order_to_use = reverse_draft_order if snake and current_round % 2 == 1 else draft_order
+			order_to_use = reverse_draft_order if snake and ((current_round % 2 == 1 and current_round < 2) or (current_round % 2 == 0 and current_round >= 2)) else draft_order
 
 			for participant in order_to_use:
 
@@ -118,7 +120,7 @@ class League:
 		season_started = self.check_roster_eligibility()
 
 		while not season_started:
-			print("Season failed to start. At least one roster is not eligible")
+			print("Warn: One team does not meet roster rules")
 			self.accept_commands()
 			season_started = self.check_roster_eligibility()
 
@@ -178,13 +180,19 @@ class League:
 
 		self.update_health_of_teams(guarantee_health=True)
 		self.accept_commands()
+		
+		finals_started = self.check_roster_eligibility()
+		while not finals_started:
+			print("Warn: One team does not meet roster rules")
+			self.accept_commands()
+			finals_started = self.check_roster_eligibility()
 
 		contender_one_wins = 0
 		for game in range(7):
 			if dramatic:
 				self.sleep(2)
 			print(f"Finals Game {(game + 1)}")
-			winner, _, _ = MatchupCenter.play_game(contender_one, contender_two, display=True, play_by_play=self.rules.play_by_play_mode(), roto=self.rules.is_roto())
+			winner, _, _ = MatchupCenter.play_game(contender_one, contender_two, display=True, play_by_play=self.rules.play_by_play_mode(), roto=self.rules.is_roto(), detailed_display=True)
 			contender_one_wins = contender_one_wins + 1 if winner == contender_one else contender_one_wins
 			print("{} ({}) - {} ({})\n".format(contender_one, contender_one_wins, contender_two, (game + 1) - contender_one_wins))
 			if contender_one_wins >= 4 or ((game + 1) - contender_one_wins) >= 4:
@@ -228,6 +236,9 @@ class League:
 			self.free_agents.remove(free_agent)
 
 	def accept_commands(self, command=None, display=True):
+		if self.all_auto:
+			return TransactionResult.SUCCESS_NO_ACTION
+
 		if display:
 			print("\nAccepting commands")
 
@@ -311,6 +322,12 @@ class League:
 	def sleep(self, length):
 		if self.rules.dramatic_mode():
 			time.sleep(length)
+
+	def save_agents(self):
+		if self.rules.is_training():
+			for participant in self.participants:
+				if not participant.is_a_person():
+					participant.save_model()
 
 
 

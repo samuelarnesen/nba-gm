@@ -4,14 +4,14 @@ from player import Player
 class MatchupCenter:
 
 	@staticmethod
-	def play_game(contender_one, contender_two, display=False, play_by_play=False, roto=False):
+	def play_game(contender_one, contender_two, display=False, play_by_play=False, roto=False, detailed_display=False):
 		if play_by_play:
 			return MatchupCenter.play_by_play_game(contender_one, contender_two, display)
 		else:
-			return MatchupCenter.play_regular_game(contender_one, contender_two, display, roto)
+			return MatchupCenter.play_regular_game(contender_one, contender_two, display, roto, detailed_display)
 
 	@staticmethod
-	def play_regular_game(contender_one, contender_two, display=False, roto=False):
+	def play_regular_game(contender_one, contender_two, display=False, roto=False, detailed_display=False):
 		contender_one_game = contender_one.play_game()
 		contender_two_game = contender_two.play_game()
 
@@ -21,6 +21,11 @@ class MatchupCenter:
 		winner = contender_one if contender_one_score >= contender_two_score else contender_two
 		if display:
 			print("{} ({}) - {} ({})". format(contender_one.get_name(), round(contender_one_score, 2), contender_two, round(contender_two_score, 2)))
+			if detailed_display:
+				print(contender_one, contender_one_game)
+				print(contender_two, contender_two_game)
+				print()
+
 		return winner, (contender_one_game, contender_two_game), (contender_one_score, contender_two_score)
 
 

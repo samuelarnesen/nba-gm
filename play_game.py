@@ -1,3 +1,4 @@
+from agent_model import AgentModel
 from league import League
 import re, json, pickle, argparse
 

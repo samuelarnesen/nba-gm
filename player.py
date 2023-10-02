@@ -93,7 +93,7 @@ class Player:
 			for game in games:
 				total_game.add(game)
 			self.scouting_report = "Value: {}, Games: {}".format(str(total_game), number_of_games_to_use)
-			self.scout_value = (str(total_game), number_of_games_to_use)
+			self.scout_value = (total_game, number_of_games_to_use)
 		else:
 			avg_score = round(sum([game.score() for game in games]) / number_of_games_to_use, 0)
 			self.scouting_report = "Value: {}, Games: {}".format(str(avg_score), number_of_games_to_use)
@@ -284,6 +284,11 @@ class PlayerGroup:
 		else:
 			print("Warn: player could not be removed")
 		return player_to_remove
+
+	def get_first_player(self):
+		if len(self.players) > 0:
+			return self.players[0]
+		return None
 
 class InjuryStatus(Enum):
 	HEALTHY = auto()

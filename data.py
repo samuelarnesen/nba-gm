@@ -2,6 +2,7 @@ import pandas as pd
 from functools import total_ordering
 from rules import Rules, ScoringRules
 import random, math, sys, copy
+import numpy as np
 
 class Database:
 
@@ -13,6 +14,7 @@ class Database:
 			self.data = pd.read_csv(filepath[0], encoding="ISO-8859-1")
 			for extra_filepath in range(1, len(filepath)):
 				self.data = self.data.append(pd.read_csv(filepath[extra_filepath], encoding="ISO-8859-1"))
+			self.data = self.data.dropna()
 
 		self.positions = None
 		if isinstance(positional_filepath, str):
@@ -49,6 +51,12 @@ class PlayerData:
 		if not game.is_valid():
 			game = GameData(self.scoring_rules, self.data.iloc[random.randrange(self.num_games)])
 		return game
+
+	def get_cumulative_game(self):
+		overall_game = CumulativeGameData()
+		for i in range(self.num_games):
+			overall_game.add(GameData(self.scoring_rules, self.data.iloc[i]))
+		return overall_game
 
 	def get_position(self):
 		return self.position
@@ -120,7 +128,7 @@ class GameData:
 		return self.score() == other.score()
 
 	def __str__(self):
-		return "PTS: {} ORB: {} DRB: {} AST: {} BLK: {} STL: {} TO: {}FG%: {} FT%: {} PF: {}".format(self.points, self.offensive_rebounds, self.defensive_rebounds, \
+		return "PTS: {} ORB: {} DRB: {} AST: {} BLK: {} STL: {} TO: {} FG%: {} FT%: {} PF: {}".format(self.points, self.offensive_rebounds, self.defensive_rebounds, \
 			self.assists, self.blocks, self.steals, self.turnovers, round(self.field_goals / self.field_goal_attempts, 2) if self.field_goal_attempts else 0, \
 			round(self.free_throws / self.free_throw_attempts, 2) if self.free_throw_attempts else 0, self.personal_fouls)
 
@@ -270,10 +278,49 @@ class CumulativeGameData(GameData):
 	def __init__(self, scoring_rules=None, data=None):
 		super().__init__(scoring_rules, data)
 		self.num_games = 0
+		self.point_list = []
+		self.field_goal_list = []
+		self.field_goal_attempt_list = []
+		self.free_throw_list = []
+		self.free_throw_attempt_list = []
+		self.offensive_rebound_list = []
+		self.defensive_rebound_list = []
+		self.steal_list = []
+		self.assist_list = []
+		self.block_list = []
+		self.turnover_list = []
+		self.personal_foul_list = []
 
 	def add(self, other_game):
 		super().add(other_game)
+		self.point_list.append(other_game.get_points())
+		self.field_goal_list.append(other_game.get_field_goals())
+		self.field_goal_attempt_list.append(other_game.get_field_goal_attempts())
+		self.free_throw_list.append(other_game.get_free_throws())
+		self.free_throw_attempt_list.append(other_game.get_free_throw_attempts())
+		self.offensive_rebound_list.append(other_game.get_offensive_rebounds())
+		self.defensive_rebound_list.append(other_game.get_defensive_rebounds())
+		self.steal_list.append(other_game.get_steals())
+		self.assist_list.append(other_game.get_assists())
+		self.block_list.append(other_game.get_blocks())
+		self.turnover_list.append(other_game.get_turnovers())
+		self.personal_foul_list.append(other_game.get_personal_fouls())
 		self.num_games += 1
+
+	def get_stdevs(self):
+		return {
+			"points": np.std(self.point_list),
+			"offensive_rebounds": np.std(self.offensive_rebound_list),
+			"defensive_rebounds": np.std(self.defensive_rebound_list),
+			"steals": np.std(self.steal_list),
+			"assists": np.std(self.assist_list),
+			"blocks": np.std(self.block_list),
+			"turnovers": np.std(self.turnover_list),
+			"personal_fouls": np.std(self.personal_foul_list),
+		}
+
+	def get_num_games(self):
+		return self.num_games
 
 	def __str__(self):
 		if self.num_games == 0:

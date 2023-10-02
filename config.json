@@ -11,14 +11,28 @@
 		{
 			"Name": "Matt",
 			"Team Name": "Matt's team",
-			"Autodraft": false,
+			"Autodraft": true,
 			"Mode": "hard",
 			"Tank": false
 		},
 		{
 			"Name": "Will",
 			"Team Name": "Will's team",
-			"Autodraft": false,
+			"Autodraft": true,
+			"Mode": "hard",
+			"Tank": false
+		},
+		{
+			"Name": "Xavier",
+			"Team Name": "Xavier's team",
+			"Autodraft": true,
+			"Mode": "hard",
+			"Tank": false
+		},
+		{
+			"Name": "Shreyas",
+			"Team Name": "Shreyas's team",
+			"Autodraft": true,
 			"Mode": "hard",
 			"Tank": false
 		}
@@ -31,11 +45,12 @@
 	"Roster Size": 20,
 	"Lineup Size": 6,
 	"Positional Constraints": false,
-	"Allow Injuries": true,
-	"Dramatic": true,
+	"Allow Injuries": false,
+	"Dramatic": false,
 	"Roto": true,
 	"Play-by-play": false, 
-	"Discord Mode": true,
+	"Discord Mode": false,
+	"Training": true,
 	"Draft Rules": 
 	[
 		{
@@ -73,13 +88,13 @@
 			}
 		},
 		"Roto": {
-			"Points": 3,
-			"Field Goals": 1,
+			"Points": 3.25,
+			"Field Goals": 1.25,
 			"Free Throws": 1,
 			"Offensive Rebounds": 1.25,
 			"Defensive Rebounds": 1.75,
 			"Steals": 1,
-			"Assists": 2,
+			"Assists": 2.25,
 			"Blocks": 1,
 			"Turnovers": -1.5,
 			"Personal Fouls": -1.5,

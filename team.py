@@ -103,7 +103,7 @@ class Team:
 			print("Warn: Player {} not on bench".format(player))
 			return False
 
-		if len(self.starting_players) >= self.lineup_size:
+		if self.is_starting_lineup_full():
 			print("Warn: Starting roster size exceeded")
 			return False
 
@@ -111,6 +111,9 @@ class Team:
 		self.starting_players.append(player_to_move)
 
 		return True
+
+	def is_starting_lineup_full(self):
+		return len(self.starting_players) >= self.lineup_size
 
 	def remove_player_from_starting_lineup(self, player):
 

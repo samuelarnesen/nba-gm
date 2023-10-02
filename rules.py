@@ -9,6 +9,7 @@ class Rules:
 		self.team_rules = TeamRules(config["Lineup Size"], config["Roster Size"], config["Positional Constraints"], config["Allow Injuries"])
 		self.draft_rules = DraftRules(config["Draft Rules"])
 		self.roto_mode = config["Roto"]
+		self.training = config["Training"]
 
 		self.scoring_rules = None
 		if not config["Play-by-play"]:
@@ -37,6 +38,9 @@ class Rules:
 
 	def is_roto(self):
 		return self.roto_mode
+
+	def is_training(self):
+		return self.training
 
 class TeamRules:
 
